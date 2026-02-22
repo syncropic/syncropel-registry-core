@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "syncropel-registry-core"
+version = "0.1.0"
+description = "Shared governance logic for Syncropel — namespaces, hashing, trust, validation"
+readme = {text = "", content-type = "text/plain"}
+license = "Apache-2.0"
+requires-python = ">=3.12"
+authors = [{ name = "Syncropic" }]
+dependencies = []  # Zero external deps — stdlib only
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "ruff>=0.4",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/syncropel_registry_core"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
