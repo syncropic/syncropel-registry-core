@@ -69,7 +69,7 @@ Defined in `constants.py`. See parent workspace CLAUDE.md for all 15.
 | Consumer | How It Imports | What It Uses |
 |----------|---------------|--------------|
 | `syncropel-registry` | `git+https://github.com/syncropic/syncropel-registry-core.git` | validators, models, namespaces, hashing, trust |
-| `syncropel-cli` | Same git URL + local editable override | Same + sct helpers |
+| `syncropel-cli` | `git+https://github.com/syncropic/syncropel-registry-core.git@v0.2.0` | Same + sct helpers |
 
 ## Code Conventions
 
