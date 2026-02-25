@@ -7,7 +7,6 @@ from syncropel_registry_core.trust import (
     GovernanceTrustScore,
 )
 
-
 # ---------------------------------------------------------------------------
 # Wilson lower bound
 # ---------------------------------------------------------------------------
@@ -82,7 +81,7 @@ class TestApplyDecay:
         """
         raw = Decimal("0.90")
         result = GovernanceTrustScore.apply_decay(raw, Decimal("30"))
-        expected_approx = (float(raw) * 0.5 + float(PRIOR_TRUST) * 0.5)
+        expected_approx = float(raw) * 0.5 + float(PRIOR_TRUST) * 0.5
         assert abs(float(result) - expected_approx) < 0.02
 
     def test_large_days_approaches_prior(self):

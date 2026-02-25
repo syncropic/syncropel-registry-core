@@ -3,7 +3,6 @@
 import pytest
 
 from syncropel_registry_core.namespaces import (
-    ALL_HASH_LEVELS,
     DEFAULT_BINDINGS,
     DEFAULT_BUDGET,
     DEFAULT_CAPABILITY,
@@ -23,7 +22,6 @@ from syncropel_registry_core.namespaces import (
     union_deny,
     validate_namespace_id,
 )
-
 
 # ---------------------------------------------------------------------------
 # Path validation — spec §2.3
@@ -172,33 +170,103 @@ class TestPatternSubsumes:
 
 class TestIntersectCapability:
     def test_primitive_intersection(self):
-        parent = {"primitives": ["GET", "PUT", "CALL", "MAP"], "shapes": [], "operations": [], "resources": [], "max_effects": 1000, "max_depth": 50}
-        child = {"primitives": ["GET", "CALL"], "shapes": [], "operations": [], "resources": [], "max_effects": 500, "max_depth": 25}
+        parent = {
+            "primitives": ["GET", "PUT", "CALL", "MAP"],
+            "shapes": [],
+            "operations": [],
+            "resources": [],
+            "max_effects": 1000,
+            "max_depth": 50,
+        }
+        child = {
+            "primitives": ["GET", "CALL"],
+            "shapes": [],
+            "operations": [],
+            "resources": [],
+            "max_effects": 500,
+            "max_depth": 25,
+        }
         result = intersect_capability(parent, child)
         assert set(result["primitives"]) == {"GET", "CALL"}
 
     def test_shape_intersection(self):
-        parent = {"primitives": [], "shapes": ["VOID", "ONE", "OPTIONAL", "MANY", "KEYED"], "operations": [], "resources": [], "max_effects": 1000, "max_depth": 50}
-        child = {"primitives": [], "shapes": ["ONE", "MANY"], "operations": [], "resources": [], "max_effects": 1000, "max_depth": 50}
+        parent = {
+            "primitives": [],
+            "shapes": ["VOID", "ONE", "OPTIONAL", "MANY", "KEYED"],
+            "operations": [],
+            "resources": [],
+            "max_effects": 1000,
+            "max_depth": 50,
+        }
+        child = {
+            "primitives": [],
+            "shapes": ["ONE", "MANY"],
+            "operations": [],
+            "resources": [],
+            "max_effects": 1000,
+            "max_depth": 50,
+        }
         result = intersect_capability(parent, child)
         assert set(result["shapes"]) == {"ONE", "MANY"}
 
     def test_max_effects_min(self):
-        parent = {"primitives": [], "shapes": [], "operations": [], "resources": [], "max_effects": 1000, "max_depth": 50}
-        child = {"primitives": [], "shapes": [], "operations": [], "resources": [], "max_effects": 500, "max_depth": 15}
+        parent = {
+            "primitives": [],
+            "shapes": [],
+            "operations": [],
+            "resources": [],
+            "max_effects": 1000,
+            "max_depth": 50,
+        }
+        child = {
+            "primitives": [],
+            "shapes": [],
+            "operations": [],
+            "resources": [],
+            "max_effects": 500,
+            "max_depth": 15,
+        }
         result = intersect_capability(parent, child)
         assert result["max_effects"] == 500
         assert result["max_depth"] == 15
 
     def test_operation_pattern_intersect(self):
-        parent = {"primitives": [], "shapes": [], "operations": ["*"], "resources": [], "max_effects": 1000, "max_depth": 50}
-        child = {"primitives": [], "shapes": [], "operations": ["db.query", "llm.generate"], "resources": [], "max_effects": 1000, "max_depth": 50}
+        parent = {
+            "primitives": [],
+            "shapes": [],
+            "operations": ["*"],
+            "resources": [],
+            "max_effects": 1000,
+            "max_depth": 50,
+        }
+        child = {
+            "primitives": [],
+            "shapes": [],
+            "operations": ["db.query", "llm.generate"],
+            "resources": [],
+            "max_effects": 1000,
+            "max_depth": 50,
+        }
         result = intersect_capability(parent, child)
         assert result["operations"] == ["db.query", "llm.generate"]
 
     def test_resource_pattern_intersect(self):
-        parent = {"primitives": [], "shapes": [], "operations": [], "resources": ["/sync/*", "/exec/*"], "max_effects": 1000, "max_depth": 50}
-        child = {"primitives": [], "shapes": [], "operations": [], "resources": ["/sync/database/*", "/other/*"], "max_effects": 1000, "max_depth": 50}
+        parent = {
+            "primitives": [],
+            "shapes": [],
+            "operations": [],
+            "resources": ["/sync/*", "/exec/*"],
+            "max_effects": 1000,
+            "max_depth": 50,
+        }
+        child = {
+            "primitives": [],
+            "shapes": [],
+            "operations": [],
+            "resources": ["/sync/database/*", "/other/*"],
+            "max_effects": 1000,
+            "max_depth": 50,
+        }
         result = intersect_capability(parent, child)
         assert result["resources"] == ["/sync/database/*"]
 
@@ -210,8 +278,18 @@ class TestIntersectCapability:
 
 class TestRestrictBudget:
     def test_basic_restriction(self):
-        parent = {"compute_usd": 0.10, "latency_ms": 60000, "quality_floor": 0.0, "risk_ceiling": 1.0}
-        child = {"compute_usd": 100.00, "latency_ms": 120000, "quality_floor": 0.5, "risk_ceiling": 0.8}
+        parent = {
+            "compute_usd": 0.10,
+            "latency_ms": 60000,
+            "quality_floor": 0.0,
+            "risk_ceiling": 1.0,
+        }
+        child = {
+            "compute_usd": 100.00,
+            "latency_ms": 120000,
+            "quality_floor": 0.5,
+            "risk_ceiling": 0.8,
+        }
         result = restrict_budget(parent, child)
         assert result["compute_usd"] == 0.10  # min
         assert result["latency_ms"] == 60000  # min
@@ -219,8 +297,18 @@ class TestRestrictBudget:
         assert result["risk_ceiling"] == 0.8  # min
 
     def test_child_tighter(self):
-        parent = {"compute_usd": 100.00, "latency_ms": 120000, "quality_floor": 0.5, "risk_ceiling": 0.8}
-        child = {"compute_usd": 10.00, "latency_ms": 30000, "quality_floor": 0.8, "risk_ceiling": 0.5}
+        parent = {
+            "compute_usd": 100.00,
+            "latency_ms": 120000,
+            "quality_floor": 0.5,
+            "risk_ceiling": 0.8,
+        }
+        child = {
+            "compute_usd": 10.00,
+            "latency_ms": 30000,
+            "quality_floor": 0.8,
+            "risk_ceiling": 0.5,
+        }
         result = restrict_budget(parent, child)
         assert result["compute_usd"] == 10.00
         assert result["latency_ms"] == 30000
@@ -265,7 +353,10 @@ class TestOverlayBindings:
         assert result["@db"]["concrete_path"] == "/table/analytics-db-prod/public"
 
     def test_parent_inherited(self):
-        parent = {"@wikipedia": {"concrete_path": "/doc"}, "@weather": {"concrete_path": "/weather"}}
+        parent = {
+            "@wikipedia": {"concrete_path": "/doc"},
+            "@weather": {"concrete_path": "/weather"},
+        }
         child = {}
         result = overlay_bindings(parent, child)
         assert result == parent
@@ -328,7 +419,10 @@ class TestResolveBinding:
 
     def test_scoped(self):
         binding = {"concrete_path": "/local/data", "scoped": True}
-        assert resolve_binding(binding, "acme/analytics/prod") == "/home/acme/analytics/prod/local/data"
+        assert (
+            resolve_binding(binding, "acme/analytics/prod")
+            == "/home/acme/analytics/prod/local/data"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -342,11 +436,13 @@ class TestBuildAncestorChain:
         return lambda ns_id: ns_by_id.get(ns_id)
 
     def test_simple_chain(self):
-        store = self._make_store([
-            {"id": "default", "parent_id": None},
-            {"id": "acme", "parent_id": "default"},
-            {"id": "acme/analytics", "parent_id": "acme"},
-        ])
+        store = self._make_store(
+            [
+                {"id": "default", "parent_id": None},
+                {"id": "acme", "parent_id": "default"},
+                {"id": "acme/analytics", "parent_id": "acme"},
+            ]
+        )
         chain = build_ancestor_chain("acme/analytics", store)
         assert [ns["id"] for ns in chain] == ["default", "acme", "acme/analytics"]
 
@@ -361,11 +457,13 @@ class TestBuildAncestorChain:
             build_ancestor_chain("nonexistent", store)
 
     def test_cycle_detection(self):
-        store = self._make_store([
-            {"id": "default", "parent_id": None},
-            {"id": "a", "parent_id": "b"},
-            {"id": "b", "parent_id": "a"},
-        ])
+        store = self._make_store(
+            [
+                {"id": "default", "parent_id": None},
+                {"id": "a", "parent_id": "b"},
+                {"id": "b", "parent_id": "a"},
+            ]
+        )
         with pytest.raises(ValueError, match="NAMESPACE_CYCLE_DETECTED"):
             build_ancestor_chain("a", store)
 
@@ -395,7 +493,13 @@ class TestResolveNamespace:
                 "parent_id": "default",
                 "level": "ORG",
                 "bindings_json": None,
-                "bindings": {"@search": {"concrete_path": "/document/brave", "binding_type": "INVOCABLE", "scoped": False}},
+                "bindings": {
+                    "@search": {
+                        "concrete_path": "/document/brave",
+                        "binding_type": "INVOCABLE",
+                        "scoped": False,
+                    }
+                },
                 "variables": {"BRAVE_API_KEY": {"type": "SECRET", "value": "enc:v2:..."}},
                 "variables_json": None,
                 "config_json": None,
@@ -406,7 +510,13 @@ class TestResolveNamespace:
                 "parent_id": "acme",
                 "level": "PROJECT",
                 "bindings_json": None,
-                "bindings": {"@db": {"concrete_path": "/table/analytics-db/public", "binding_type": "ANY", "scoped": False}},
+                "bindings": {
+                    "@db": {
+                        "concrete_path": "/table/analytics-db/public",
+                        "binding_type": "ANY",
+                        "scoped": False,
+                    }
+                },
                 "variables": {"DB_POOL_SIZE": {"type": "ENV", "value": "10"}},
                 "variables_json": None,
                 "config_json": None,
@@ -417,7 +527,13 @@ class TestResolveNamespace:
                 "parent_id": "acme/analytics",
                 "level": "ENV",
                 "bindings_json": None,
-                "bindings": {"@db": {"concrete_path": "/table/analytics-db-prod/public", "binding_type": "ANY", "scoped": False}},
+                "bindings": {
+                    "@db": {
+                        "concrete_path": "/table/analytics-db-prod/public",
+                        "binding_type": "ANY",
+                        "scoped": False,
+                    }
+                },
                 "variables": {
                     "DB_POOL_SIZE": {"type": "ENV", "value": "5"},
                     "DB_URL": {"type": "VAULT", "value": "vault://acme/analytics/prod/db-url"},
@@ -446,7 +562,12 @@ class TestResolveNamespace:
                     "max_depth": 50,
                 },
                 "deny": {"rules": []},
-                "budget": {"compute_usd": 100.00, "latency_ms": 120000, "quality_floor": 0.5, "risk_ceiling": 0.8},
+                "budget": {
+                    "compute_usd": 100.00,
+                    "latency_ms": 120000,
+                    "quality_floor": 0.5,
+                    "risk_ceiling": 0.8,
+                },
                 "dial_ceiling": 0.8,
                 "hash_access": ["L0", "L1", "L2", "L3"],
             },
@@ -459,8 +580,21 @@ class TestResolveNamespace:
                     "max_effects": 500,
                     "max_depth": 25,
                 },
-                "deny": {"rules": [{"principal_pattern": "*", "resources": ["/sync/database/*/system"], "primitives": ["PUT"]}]},
-                "budget": {"compute_usd": 50.00, "latency_ms": 90000, "quality_floor": 0.6, "risk_ceiling": 0.7},
+                "deny": {
+                    "rules": [
+                        {
+                            "principal_pattern": "*",
+                            "resources": ["/sync/database/*/system"],
+                            "primitives": ["PUT"],
+                        }
+                    ]
+                },
+                "budget": {
+                    "compute_usd": 50.00,
+                    "latency_ms": 90000,
+                    "quality_floor": 0.6,
+                    "risk_ceiling": 0.7,
+                },
                 "dial_ceiling": 0.67,
                 "hash_access": ["L0", "L1", "L2"],
             },
@@ -473,15 +607,31 @@ class TestResolveNamespace:
                     "max_effects": 200,
                     "max_depth": 15,
                 },
-                "deny": {"rules": [{"principal_pattern": "did:sync:sa:*", "resources": ["/sync/database/analytics-db-prod/sensitive*"]}]},
-                "budget": {"compute_usd": 10.00, "latency_ms": 30000, "quality_floor": 0.8, "risk_ceiling": 0.5},
+                "deny": {
+                    "rules": [
+                        {
+                            "principal_pattern": "did:sync:sa:*",
+                            "resources": ["/sync/database/analytics-db-prod/sensitive*"],
+                        }
+                    ]
+                },
+                "budget": {
+                    "compute_usd": 10.00,
+                    "latency_ms": 30000,
+                    "quality_floor": 0.8,
+                    "risk_ceiling": 0.5,
+                },
                 "dial_ceiling": 0.5,
                 "hash_access": ["L1", "L2"],
             },
         }
 
-        get_ns = lambda ns_id: namespaces.get(ns_id)
-        get_policy = lambda ns_id: policies.get(ns_id)
+        def get_ns(ns_id):
+            return namespaces.get(ns_id)
+
+        def get_policy(ns_id):
+            return policies.get(ns_id)
+
         return get_ns, get_policy
 
     def test_full_resolution(self):
@@ -532,7 +682,9 @@ class TestResolveNamespace:
 
             if prev_eff is not None:
                 # Primitives: child subset of parent
-                assert set(eff["capability"]["primitives"]) <= set(prev_eff["capability"]["primitives"])
+                assert set(eff["capability"]["primitives"]) <= set(
+                    prev_eff["capability"]["primitives"]
+                )
                 # Shapes: child subset of parent
                 assert set(eff["capability"]["shapes"]) <= set(prev_eff["capability"]["shapes"])
                 # max_effects: child <= parent
@@ -580,8 +732,12 @@ class TestResolveNamespace:
             # "acme" missing
             "acme/analytics": {"id": "acme/analytics", "parent_id": "acme"},
         }
-        get_ns = lambda ns_id: namespaces.get(ns_id)
-        get_policy = lambda ns_id: None
+
+        def get_ns(ns_id):
+            return namespaces.get(ns_id)
+
+        def get_policy(ns_id):
+            return None
 
         with pytest.raises(ValueError, match="NAMESPACE_NOT_FOUND"):
             resolve_namespace("acme/analytics", get_ns, get_policy)

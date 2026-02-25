@@ -35,3 +35,10 @@ HASH_ALGORITHM = "sha256"
 
 # F14: Canonical JSON Key Order — alphabetical within each level object
 # (enforced by implementation, not a runtime constant)
+
+
+def _any_glob_match(patterns: list[str], text: str) -> bool:
+    """Check if any glob pattern in the list matches the text."""
+    from fnmatch import fnmatch
+
+    return any(fnmatch(text, p) for p in patterns)

@@ -31,9 +31,9 @@ def check_crystallization(success_count: int, failure_count: int) -> bool:
     if total < CRYSTALLIZATION_THRESHOLD:
         return False
     p = success_count / total
-    z2 = WILSON_Z ** 2
+    z2 = WILSON_Z**2
     denom = 1 + z2 / total
     center = (p + z2 / (2 * total)) / denom
-    spread = (WILSON_Z / denom) * ((p * (1 - p) / total + z2 / (4 * total ** 2)) ** 0.5)
+    spread = (WILSON_Z / denom) * ((p * (1 - p) / total + z2 / (4 * total**2)) ** 0.5)
     lower_bound = center - spread
     return lower_bound >= CRYSTALLIZATION_SCORE

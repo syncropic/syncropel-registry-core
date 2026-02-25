@@ -12,9 +12,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
-from fnmatch import fnmatch
-from typing import Any, Optional
+from typing import Any
 
+from syncropel_registry_core.constants import _any_glob_match
 from syncropel_registry_core.models.governance import (
     DenialKind,
     GovernanceResultType,
@@ -23,7 +23,6 @@ from syncropel_registry_core.models.sct import (
     GovernanceTier,
     SessionCapabilityToken,
 )
-
 
 # ---------------------------------------------------------------------------
 # Result dataclasses
@@ -132,57 +131,59 @@ def check_3_capability(
 
         # 3a: Primitive check
         if cap.primitives and primitive not in cap.primitives:
-            errors.append(GovernanceCheckError(
-                check_number=3,
-                check_name="capability.primitives",
-                kind=DenialKind.CAPABILITY_VIOLATION,
-                detail=(
-                    f"Primitive '{primitive}' not in allowed set "
-                    f"{sorted(cap.primitives)}"
-                ),
-                effect_index=idx,
-            ))
+            errors.append(
+                GovernanceCheckError(
+                    check_number=3,
+                    check_name="capability.primitives",
+                    kind=DenialKind.CAPABILITY_VIOLATION,
+                    detail=(f"Primitive '{primitive}' not in allowed set {sorted(cap.primitives)}"),
+                    effect_index=idx,
+                )
+            )
 
         # 3b: Shape check
         if cap.shapes and shape not in cap.shapes:
-            errors.append(GovernanceCheckError(
-                check_number=3,
-                check_name="capability.shapes",
-                kind=DenialKind.CAPABILITY_VIOLATION,
-                detail=(
-                    f"Shape '{shape}' not in allowed set "
-                    f"{sorted(cap.shapes)}"
-                ),
-                effect_index=idx,
-            ))
+            errors.append(
+                GovernanceCheckError(
+                    check_number=3,
+                    check_name="capability.shapes",
+                    kind=DenialKind.CAPABILITY_VIOLATION,
+                    detail=(f"Shape '{shape}' not in allowed set {sorted(cap.shapes)}"),
+                    effect_index=idx,
+                )
+            )
 
         # 3c: Operation check (empty operations list = all allowed)
         if cap.operations and operation:
             if not _any_glob_match(cap.operations, operation):
-                errors.append(GovernanceCheckError(
-                    check_number=3,
-                    check_name="capability.operations",
-                    kind=DenialKind.CAPABILITY_VIOLATION,
-                    detail=(
-                        f"Operation '{operation}' does not match any "
-                        f"allowed pattern {cap.operations}"
-                    ),
-                    effect_index=idx,
-                ))
+                errors.append(
+                    GovernanceCheckError(
+                        check_number=3,
+                        check_name="capability.operations",
+                        kind=DenialKind.CAPABILITY_VIOLATION,
+                        detail=(
+                            f"Operation '{operation}' does not match any "
+                            f"allowed pattern {cap.operations}"
+                        ),
+                        effect_index=idx,
+                    )
+                )
 
         # 3d: Resource check (empty resources list = all allowed)
         if cap.resources and resource:
             if not _any_glob_match(cap.resources, resource):
-                errors.append(GovernanceCheckError(
-                    check_number=3,
-                    check_name="capability.resources",
-                    kind=DenialKind.CAPABILITY_VIOLATION,
-                    detail=(
-                        f"Resource '{resource}' does not match any "
-                        f"allowed pattern {cap.resources}"
-                    ),
-                    effect_index=idx,
-                ))
+                errors.append(
+                    GovernanceCheckError(
+                        check_number=3,
+                        check_name="capability.resources",
+                        kind=DenialKind.CAPABILITY_VIOLATION,
+                        detail=(
+                            f"Resource '{resource}' does not match any "
+                            f"allowed pattern {cap.resources}"
+                        ),
+                        effect_index=idx,
+                    )
+                )
 
 
 def check_4_deny(
@@ -201,16 +202,17 @@ def check_4_deny(
         resource = effect.get("resource", "")
 
         if sct.deny.matches(sct.principal_did, primitive, shape, resource):
-            errors.append(GovernanceCheckError(
-                check_number=4,
-                check_name="deny_constraint",
-                kind=DenialKind.DENY_CONSTRAINT,
-                detail=(
-                    f"Effect {primitive} {shape} on '{resource}' "
-                    f"matches a deny constraint"
-                ),
-                effect_index=idx,
-            ))
+            errors.append(
+                GovernanceCheckError(
+                    check_number=4,
+                    check_name="deny_constraint",
+                    kind=DenialKind.DENY_CONSTRAINT,
+                    detail=(
+                        f"Effect {primitive} {shape} on '{resource}' matches a deny constraint"
+                    ),
+                    effect_index=idx,
+                )
+            )
 
 
 def check_5_budget_session(
@@ -235,46 +237,51 @@ def check_5_budget_session(
 
     # Compute budget check (aggregate, 0 = unlimited)
     if budget.compute > Decimal("0") and total_cost > budget.compute:
-        errors.append(GovernanceCheckError(
-            check_number=5,
-            check_name="budget.compute",
-            kind=DenialKind.BUDGET_EXCEEDED,
-            detail=(
-                f"Total estimated cost {total_cost} exceeds compute "
-                f"budget {budget.compute}"
-            ),
-            effect_index=None,
-        ))
+        errors.append(
+            GovernanceCheckError(
+                check_number=5,
+                check_name="budget.compute",
+                kind=DenialKind.BUDGET_EXCEEDED,
+                detail=(
+                    f"Total estimated cost {total_cost} exceeds compute budget {budget.compute}"
+                ),
+                effect_index=None,
+            )
+        )
 
     # Latency budget check (aggregate, 0 = unlimited)
     if budget.latency > Decimal("0") and total_latency > budget.latency:
-        errors.append(GovernanceCheckError(
-            check_number=5,
-            check_name="budget.latency",
-            kind=DenialKind.BUDGET_EXCEEDED,
-            detail=(
-                f"Total estimated latency {total_latency}ms exceeds "
-                f"latency budget {budget.latency}ms"
-            ),
-            effect_index=None,
-        ))
+        errors.append(
+            GovernanceCheckError(
+                check_number=5,
+                check_name="budget.latency",
+                kind=DenialKind.BUDGET_EXCEEDED,
+                detail=(
+                    f"Total estimated latency {total_latency}ms exceeds "
+                    f"latency budget {budget.latency}ms"
+                ),
+                effect_index=None,
+            )
+        )
 
     # Budget utilization warnings (> 80%)
     if budget.compute > Decimal("0"):
         utilization = total_cost / budget.compute
         if utilization > Decimal("0.8") and total_cost <= budget.compute:
-            warnings.append(GovernanceCheckError(
-                check_number=5,
-                check_name="budget.compute",
-                kind=DenialKind.BUDGET_EXCEEDED,
-                detail=(
-                    f"Compute budget utilization at "
-                    f"{utilization * 100:.0f}% "
-                    f"({total_cost}/{budget.compute})"
-                ),
-                effect_index=None,
-                severity="warning",
-            ))
+            warnings.append(
+                GovernanceCheckError(
+                    check_number=5,
+                    check_name="budget.compute",
+                    kind=DenialKind.BUDGET_EXCEEDED,
+                    detail=(
+                        f"Compute budget utilization at "
+                        f"{utilization * 100:.0f}% "
+                        f"({total_cost}/{budget.compute})"
+                    ),
+                    effect_index=None,
+                    severity="warning",
+                )
+            )
 
 
 def check_6_dial(
@@ -285,16 +292,17 @@ def check_6_dial(
     """Check 6: Dial position <= SCT dial ceiling."""
     if dial_position is not None:
         if dial_position > sct.dial_ceiling:
-            errors.append(GovernanceCheckError(
-                check_number=6,
-                check_name="dial_ceiling",
-                kind=DenialKind.DIAL_CEILING_EXCEEDED,
-                detail=(
-                    f"Dial position {dial_position} exceeds SCT dial "
-                    f"ceiling {sct.dial_ceiling}"
-                ),
-                effect_index=None,
-            ))
+            errors.append(
+                GovernanceCheckError(
+                    check_number=6,
+                    check_name="dial_ceiling",
+                    kind=DenialKind.DIAL_CEILING_EXCEEDED,
+                    detail=(
+                        f"Dial position {dial_position} exceeds SCT dial ceiling {sct.dial_ceiling}"
+                    ),
+                    effect_index=None,
+                )
+            )
 
 
 def check_7_hash_level(
@@ -311,15 +319,17 @@ def check_7_hash_level(
         return
 
     if requested_hash_level not in sct.hash_access:
-        errors.append(GovernanceCheckError(
-            check_number=7,
-            check_name="hash_level_access",
-            kind=DenialKind.CAPABILITY_VIOLATION,
-            detail=(
-                f"Hash level '{requested_hash_level}' not in SCT "
-                f"hash_access {sorted(sct.hash_access)}"
-            ),
-        ))
+        errors.append(
+            GovernanceCheckError(
+                check_number=7,
+                check_name="hash_level_access",
+                kind=DenialKind.CAPABILITY_VIOLATION,
+                detail=(
+                    f"Hash level '{requested_hash_level}' not in SCT "
+                    f"hash_access {sorted(sct.hash_access)}"
+                ),
+            )
+        )
 
 
 def check_8_budget_guard(
@@ -341,29 +351,29 @@ def check_8_budget_guard(
 
         # Quality floor check (per-effect)
         if budget.quality > Decimal("0") and quality < budget.quality:
-            errors.append(GovernanceCheckError(
-                check_number=8,
-                check_name="budget.quality",
-                kind=DenialKind.BUDGET_EXCEEDED,
-                detail=(
-                    f"Effect quality {quality} is below budget quality "
-                    f"floor {budget.quality}"
-                ),
-                effect_index=idx,
-            ))
+            errors.append(
+                GovernanceCheckError(
+                    check_number=8,
+                    check_name="budget.quality",
+                    kind=DenialKind.BUDGET_EXCEEDED,
+                    detail=(
+                        f"Effect quality {quality} is below budget quality floor {budget.quality}"
+                    ),
+                    effect_index=idx,
+                )
+            )
 
         # Risk ceiling check (per-effect)
         if risk > budget.risk:
-            errors.append(GovernanceCheckError(
-                check_number=8,
-                check_name="budget.risk",
-                kind=DenialKind.BUDGET_EXCEEDED,
-                detail=(
-                    f"Effect risk {risk} exceeds budget risk "
-                    f"ceiling {budget.risk}"
-                ),
-                effect_index=idx,
-            ))
+            errors.append(
+                GovernanceCheckError(
+                    check_number=8,
+                    check_name="budget.risk",
+                    kind=DenialKind.BUDGET_EXCEEDED,
+                    detail=(f"Effect risk {risk} exceeds budget risk ceiling {budget.risk}"),
+                    effect_index=idx,
+                )
+            )
 
 
 def check_9b_output_constraints(
@@ -390,34 +400,32 @@ def check_9b_output_constraints(
                 except (ValueError, TypeError):
                     cardinality = 0
             if cardinality > oc.max_many_cardinality:
-                errors.append(GovernanceCheckError(
-                    check_number=9,
-                    check_name="output_constraints.max_many_cardinality",
-                    kind=DenialKind.SHAPE_CONSTRAINT_VIOLATION,
-                    detail=(
-                        f"MANY output cardinality {cardinality} exceeds "
-                        f"limit {oc.max_many_cardinality}"
-                    ),
-                    effect_index=idx,
-                ))
+                errors.append(
+                    GovernanceCheckError(
+                        check_number=9,
+                        check_name="output_constraints.max_many_cardinality",
+                        kind=DenialKind.SHAPE_CONSTRAINT_VIOLATION,
+                        detail=(
+                            f"MANY output cardinality {cardinality} exceeds "
+                            f"limit {oc.max_many_cardinality}"
+                        ),
+                        effect_index=idx,
+                    )
+                )
 
         # deny_shapes_on_resources check
         if resource and oc.deny_shapes_on_resources:
             for denied_shape, resource_patterns in oc.deny_shapes_on_resources:
-                if (
-                    output_shape == denied_shape
-                    and _any_glob_match(resource_patterns, resource)
-                ):
-                    errors.append(GovernanceCheckError(
-                        check_number=9,
-                        check_name="output_constraints.deny_shapes_on_resources",
-                        kind=DenialKind.SHAPE_CONSTRAINT_VIOLATION,
-                        detail=(
-                            f"Shape '{denied_shape}' is denied on "
-                            f"resource '{resource}'"
-                        ),
-                        effect_index=idx,
-                    ))
+                if output_shape == denied_shape and _any_glob_match(resource_patterns, resource):
+                    errors.append(
+                        GovernanceCheckError(
+                            check_number=9,
+                            check_name="output_constraints.deny_shapes_on_resources",
+                            kind=DenialKind.SHAPE_CONSTRAINT_VIOLATION,
+                            detail=(f"Shape '{denied_shape}' is denied on resource '{resource}'"),
+                            effect_index=idx,
+                        )
+                    )
 
 
 def check_9c_lineage_integrity(
@@ -434,16 +442,18 @@ def check_9c_lineage_integrity(
         content_hash = effect.get("content_hash")
         # Only check if the field is explicitly present but empty
         if content_hash is not None and content_hash == "":
-            errors.append(GovernanceCheckError(
-                check_number=9,
-                check_name="lineage_integrity",
-                kind=DenialKind.LINEAGE_INTEGRITY_FAILURE,
-                detail=(
-                    f"Effect at index {idx} has an empty content_hash, "
-                    f"indicating broken lineage"
-                ),
-                effect_index=idx,
-            ))
+            errors.append(
+                GovernanceCheckError(
+                    check_number=9,
+                    check_name="lineage_integrity",
+                    kind=DenialKind.LINEAGE_INTEGRITY_FAILURE,
+                    detail=(
+                        f"Effect at index {idx} has an empty content_hash, "
+                        f"indicating broken lineage"
+                    ),
+                    effect_index=idx,
+                )
+            )
 
 
 def check_9d_federation_consent(
@@ -479,27 +489,31 @@ def check_9d_federation_consent(
 
         # Cross-namespace access: require a consent edge
         if not _has_consent_edge(
-            consent_edges, target_namespace, sct_namespace,
+            consent_edges,
+            target_namespace,
+            sct_namespace,
         ):
-            errors.append(GovernanceCheckError(
-                check_number=9,
-                check_name="federation_consent",
-                kind=DenialKind.FEDERATION_CONSENT_DENIED,
-                detail=(
-                    f"Cross-namespace access to '{resource}' "
-                    f"(namespace '{target_namespace}') requires a "
-                    f"consent edge from '{target_namespace}' to "
-                    f"'{sct_namespace}'"
-                ),
-                effect_index=idx,
-            ))
+            errors.append(
+                GovernanceCheckError(
+                    check_number=9,
+                    check_name="federation_consent",
+                    kind=DenialKind.FEDERATION_CONSENT_DENIED,
+                    detail=(
+                        f"Cross-namespace access to '{resource}' "
+                        f"(namespace '{target_namespace}') requires a "
+                        f"consent edge from '{target_namespace}' to "
+                        f"'{sct_namespace}'"
+                    ),
+                    effect_index=idx,
+                )
+            )
 
 
 def validate_checks_3_to_9(
     trace_effects: list[dict],
     sct: SessionCapabilityToken,
-    dial_position: Optional[Decimal] = None,
-    requested_hash_level: Optional[str] = None,
+    dial_position: Decimal | None = None,
+    requested_hash_level: str | None = None,
     consent_edges: list[Any] | None = None,
 ) -> GovernanceValidationResult:
     """Run pure governance checks 3-9 and return aggregate result.
@@ -549,16 +563,18 @@ def validate_checks_3_to_9(
     struct_before = len(errors)
     cap = sct.capability
     if len(trace_effects) > cap.max_effects:
-        errors.append(GovernanceCheckError(
-            check_number=9,
-            check_name="structural.max_effects",
-            kind=DenialKind.CAPABILITY_VIOLATION,
-            detail=(
-                f"Trace has {len(trace_effects)} effects, "
-                f"exceeding max_effects limit of {cap.max_effects}"
-            ),
-            effect_index=None,
-        ))
+        errors.append(
+            GovernanceCheckError(
+                check_number=9,
+                check_name="structural.max_effects",
+                kind=DenialKind.CAPABILITY_VIOLATION,
+                detail=(
+                    f"Trace has {len(trace_effects)} effects, "
+                    f"exceeding max_effects limit of {cap.max_effects}"
+                ),
+                effect_index=None,
+            )
+        )
     check_9b_output_constraints(trace_effects, sct, errors, warnings)
     check_9c_lineage_integrity(trace_effects, errors, warnings)
     check_9d_federation_consent(trace_effects, sct, consent_edges, errors, warnings)
@@ -595,11 +611,6 @@ def validate_checks_3_to_9(
 # ---------------------------------------------------------------------------
 
 
-def _any_glob_match(patterns: list[str], text: str) -> bool:
-    """Check if any glob pattern in the list matches the text."""
-    return any(fnmatch(text, p) for p in patterns)
-
-
 def _to_decimal(value) -> Decimal:
     """Safely convert a value to Decimal."""
     if isinstance(value, Decimal):
@@ -621,7 +632,7 @@ def _extract_namespace_from_resource(resource: str) -> str | None:
     if not resource.startswith("sync://"):
         return None
 
-    path = resource[len("sync://"):]
+    path = resource[len("sync://") :]
     if not path:
         return None
 

@@ -16,8 +16,6 @@ from syncropel_registry_core.models.sct import (
     SessionCapabilityToken,
 )
 from syncropel_registry_core.validators.governance import (
-    GovernanceCheckError,
-    GovernanceValidationResult,
     check_3_capability,
     check_4_deny,
     check_5_budget_session,
@@ -29,7 +27,6 @@ from syncropel_registry_core.validators.governance import (
     check_9d_federation_consent,
     validate_checks_3_to_9,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -66,6 +63,7 @@ def _make_sct(**overrides) -> SessionCapabilityToken:
 @dataclass
 class ConsentEdge:
     """Simple consent edge for testing check_9d."""
+
     from_namespace: str
     to_namespace: str
     active: bool
@@ -160,12 +158,14 @@ class TestCheck4Deny:
     """Test deny constraint enforcement."""
 
     def test_deny_matches_produces_error(self):
-        deny = DenyEnvelope(constraints=[
-            DenyConstraint(
-                principal_pattern="*",
-                resources=["/admin/*"],
-            ),
-        ])
+        deny = DenyEnvelope(
+            constraints=[
+                DenyConstraint(
+                    principal_pattern="*",
+                    resources=["/admin/*"],
+                ),
+            ]
+        )
         sct = _make_sct(deny=deny)
         effects = [{"primitive": "GET", "shape": "ONE", "resource": "/admin/secret"}]
         errors, warnings = [], []
@@ -182,12 +182,14 @@ class TestCheck4Deny:
 
     def test_deny_principal_pattern_mismatch(self):
         """Deny constraint with non-matching principal pattern should pass."""
-        deny = DenyEnvelope(constraints=[
-            DenyConstraint(
-                principal_pattern="did:sync:sa:*",
-                resources=["/admin/*"],
-            ),
-        ])
+        deny = DenyEnvelope(
+            constraints=[
+                DenyConstraint(
+                    principal_pattern="did:sync:sa:*",
+                    resources=["/admin/*"],
+                ),
+            ]
+        )
         # principal_did does NOT match "did:sync:sa:*"
         sct = _make_sct(
             principal_did="did:sync:user:alice",
@@ -536,7 +538,9 @@ class TestValidateChecks3To9:
         sct = _make_sct(dial_ceiling=Decimal("0.5"))
         effects = [{"primitive": "GET", "shape": "ONE"}]
         result = validate_checks_3_to_9(
-            effects, sct, dial_position=Decimal("0.8"),
+            effects,
+            sct,
+            dial_position=Decimal("0.8"),
         )
         assert result.valid is False
         assert 6 in result.checks_failed
@@ -545,7 +549,9 @@ class TestValidateChecks3To9:
         sct = _make_sct(hash_access={"L0", "L1"})
         effects = [{"primitive": "GET", "shape": "ONE"}]
         result = validate_checks_3_to_9(
-            effects, sct, requested_hash_level="L3",
+            effects,
+            sct,
+            requested_hash_level="L3",
         )
         assert result.valid is False
         assert 7 in result.checks_failed

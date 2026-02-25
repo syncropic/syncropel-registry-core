@@ -9,14 +9,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from decimal import Decimal
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 
 from syncropel_registry_core.models.sct import GovernanceTier, QuadMetrics
 
 
-class AuditAction(str, Enum):
+class AuditAction(StrEnum):
     """All auditable governance actions (37 canonical actions)."""
+
     # Policy decisions
     POLICY_ALLOW = "POLICY_ALLOW"
     POLICY_DENY = "POLICY_DENY"
@@ -69,8 +69,9 @@ class AuditAction(str, Enum):
     JOB_GOVERNANCE_CHECK = "JOB_GOVERNANCE_CHECK"
 
 
-class DenialKind(str, Enum):
+class DenialKind(StrEnum):
     """Typed denial reasons matching the spec's DenialKind variants."""
+
     CAPABILITY_VIOLATION = "CapabilityViolation"
     BUDGET_EXCEEDED = "BudgetExceeded"
     DENY_CONSTRAINT = "DenyConstraint"
@@ -84,8 +85,9 @@ class DenialKind(str, Enum):
     SHAPE_CONSTRAINT_VIOLATION = "ShapeConstraintViolation"
 
 
-class GovernanceResultType(str, Enum):
+class GovernanceResultType(StrEnum):
     """The 4 governance result variants from the spec."""
+
     ALLOWED = "Allowed"
     DENIED = "Denied"
     ELEVATED_REQUIRED = "ElevatedRequired"
@@ -95,13 +97,14 @@ class GovernanceResultType(str, Enum):
 @dataclass
 class GovernanceDecision:
     """Result of a governance evaluation."""
+
     result_type: GovernanceResultType = GovernanceResultType.ALLOWED
-    kind: Optional[DenialKind] = None
-    detail: str = ""                    # human-readable reason
-    effect_id: str = ""                 # effect that triggered the decision
-    sct_hash: str = ""                  # SCT that authorized
-    governance_tier: Optional[GovernanceTier] = None
-    evaluation_time_us: int = 0         # microseconds
+    kind: DenialKind | None = None
+    detail: str = ""  # human-readable reason
+    effect_id: str = ""  # effect that triggered the decision
+    sct_hash: str = ""  # SCT that authorized
+    governance_tier: GovernanceTier | None = None
+    evaluation_time_us: int = 0  # microseconds
 
     # Legacy compat
     @property
@@ -131,7 +134,9 @@ class GovernanceDecision:
         if not result_type and data.get("effect"):
             result_type = "Allowed" if data["effect"] == "ALLOW" else "Denied"
         return cls(
-            result_type=GovernanceResultType(result_type) if result_type else GovernanceResultType.ALLOWED,
+            result_type=GovernanceResultType(result_type)
+            if result_type
+            else GovernanceResultType.ALLOWED,
             kind=DenialKind(kind) if kind else None,
             detail=data.get("detail", ""),
             effect_id=data.get("effect_id", ""),
@@ -144,22 +149,23 @@ class GovernanceDecision:
 @dataclass
 class AuditRecord:
     """Immutable v3 audit record with SCT linkage."""
+
     id: str = ""
     timestamp: str = ""
     action: AuditAction = AuditAction.POLICY_ALLOW
     principal_did: str = ""
     org_id: str = ""
     namespace: str = ""
-    resource: Optional[str] = None
-    dial_zone: Optional[str] = None
-    governance_tier: Optional[GovernanceTier] = None
-    decision: Optional[GovernanceDecision] = None
-    sct_hash: Optional[str] = None
-    policy_version: Optional[str] = None
+    resource: str | None = None
+    dial_zone: str | None = None
+    governance_tier: GovernanceTier | None = None
+    decision: GovernanceDecision | None = None
+    sct_hash: str | None = None
+    policy_version: str | None = None
     detail: dict = field(default_factory=dict)
-    session_id: Optional[str] = None
-    correlation_id: Optional[str] = None
-    cost: Optional[QuadMetrics] = None
+    session_id: str | None = None
+    correlation_id: str | None = None
+    cost: QuadMetrics | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -208,8 +214,9 @@ class AuditRecord:
         )
 
 
-class DerivationType(str, Enum):
+class DerivationType(StrEnum):
     """How an artifact was derived from its parents."""
+
     TRANSFORM = "TRANSFORM"
     COMBINE = "COMBINE"
     ADAPT = "ADAPT"
@@ -219,6 +226,7 @@ class DerivationType(str, Enum):
 @dataclass
 class LineageRecord:
     """Provenance record linking artifacts to their derivation chain."""
+
     artifact_hash: str = ""
     owner_did: str = ""
     parent_hashes: list[str] = field(default_factory=list)
@@ -259,8 +267,9 @@ class LineageRecord:
         )
 
 
-class ObservationOutcome(str, Enum):
+class ObservationOutcome(StrEnum):
     """Outcome of an observed effect execution."""
+
     SUCCESS = "SUCCESS"
     FAILURE = "FAILURE"
     TIMEOUT = "TIMEOUT"
@@ -270,6 +279,7 @@ class ObservationOutcome(str, Enum):
 @dataclass
 class ObservationRecord:
     """Governance observation feeding the trust engine."""
+
     id: str = ""
     principal_did: str = ""
     domain: str = ""
@@ -279,7 +289,7 @@ class ObservationRecord:
     outcome: ObservationOutcome = ObservationOutcome.SUCCESS
     quality_score: Decimal = Decimal("1")
     latency_ms: Decimal = Decimal("0")
-    cost: Optional[QuadMetrics] = None
+    cost: QuadMetrics | None = None
     timestamp: str = ""
     sct_hash: str = ""
 

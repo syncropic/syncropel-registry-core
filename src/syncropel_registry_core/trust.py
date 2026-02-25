@@ -13,7 +13,6 @@ import math
 from dataclasses import dataclass
 from decimal import Decimal
 
-
 # Cold-start prior: 7 successes out of 10 trials
 COLD_START_SUCCESSES = 7
 COLD_START_TRIALS = 10
@@ -32,6 +31,7 @@ class GovernanceTrustScore:
     Uses Wilson score lower bound with cold-start prior and
     exponential decay toward prior on stale observations.
     """
+
     principal_did: str = ""
     domain: str = ""
     successes: int = 0
@@ -60,9 +60,9 @@ class GovernanceTrustScore:
         p_hat = adj_s / adj_n
         denominator = 1 + z * z / adj_n
         center = (p_hat + z * z / (2 * adj_n)) / denominator
-        margin = z * math.sqrt(
-            (p_hat * (1 - p_hat) / adj_n + z * z / (4 * adj_n * adj_n))
-        ) / denominator
+        margin = (
+            z * math.sqrt(p_hat * (1 - p_hat) / adj_n + z * z / (4 * adj_n * adj_n)) / denominator
+        )
 
         result = center - margin
         return Decimal(str(round(max(0.0, min(1.0, result)), 4)))
@@ -108,14 +108,12 @@ class GovernanceTrustScore:
         self.raw_score = self.wilson_lower_bound(self.successes, self.trials)
         days = float(self.days_since_last_observation)
         if days > 0:
-            self.freshness_factor = Decimal(str(round(
-                math.exp(-days * math.log(2) / DECAY_HALF_LIFE), 4
-            )))
+            self.freshness_factor = Decimal(
+                str(round(math.exp(-days * math.log(2) / DECAY_HALF_LIFE), 4))
+            )
         else:
             self.freshness_factor = Decimal("1")
-        self.effective_score = self.apply_decay(
-            self.raw_score, self.days_since_last_observation
-        )
+        self.effective_score = self.apply_decay(self.raw_score, self.days_since_last_observation)
         self.trust_dial_ceiling = self.trust_to_dial_ceiling(self.effective_score)
         return self
 

@@ -10,15 +10,12 @@ from __future__ import annotations
 
 import fnmatch
 import re
-from typing import Callable
+from collections.abc import Callable
 
 # ---------------------------------------------------------------------------
 # Constants — Frozen Foundation compliance (F1, F2)
 # ---------------------------------------------------------------------------
-
-VALID_PRIMITIVES = {"GET", "PUT", "CALL", "MAP"}
-VALID_SHAPES = {"VOID", "ONE", "OPTIONAL", "MANY", "KEYED"}
-ALL_HASH_LEVELS = ["L0", "L1", "L2", "L3"]
+from syncropel_registry_core.constants import ALL_HASH_LEVELS
 
 LEVELS = ("DEFAULT", "ORG", "PROJECT", "ENV", "JOB")
 
@@ -123,15 +120,11 @@ def validate_namespace_id(ns_id: str) -> None:
 
     segments = ns_id.split("/")
     if len(segments) > MAX_SEGMENTS:
-        raise ValueError(
-            "NAMESPACE_ID_TOO_DEEP: maximum 4 segments (org/project/env/job)"
-        )
+        raise ValueError("NAMESPACE_ID_TOO_DEEP: maximum 4 segments (org/project/env/job)")
 
     for segment in segments:
         if len(segment) > MAX_SEGMENT_LENGTH:
-            raise ValueError(
-                "NAMESPACE_SEGMENT_TOO_LONG: each segment maximum 63 characters"
-            )
+            raise ValueError("NAMESPACE_SEGMENT_TOO_LONG: each segment maximum 63 characters")
 
 
 # ---------------------------------------------------------------------------
@@ -227,22 +220,14 @@ def intersect_capability(parent: dict, child: dict) -> dict:
     return {
         "primitives": sorted(parent_prims & child_prims),
         "shapes": sorted(parent_shapes & child_shapes),
-        "operations": _pattern_intersect(
-            parent.get("operations", []), child.get("operations", [])
-        ),
-        "resources": _pattern_intersect(
-            parent.get("resources", []), child.get("resources", [])
-        ),
-        "max_effects": min(
-            parent.get("max_effects", 1000), child.get("max_effects", 1000)
-        ),
+        "operations": _pattern_intersect(parent.get("operations", []), child.get("operations", [])),
+        "resources": _pattern_intersect(parent.get("resources", []), child.get("resources", [])),
+        "max_effects": min(parent.get("max_effects", 1000), child.get("max_effects", 1000)),
         "max_depth": min(parent.get("max_depth", 50), child.get("max_depth", 50)),
     }
 
 
-def _pattern_intersect(
-    parent_patterns: list[str], child_patterns: list[str]
-) -> list[str]:
+def _pattern_intersect(parent_patterns: list[str], child_patterns: list[str]) -> list[str]:
     """Return child patterns subsumed by at least one parent pattern."""
     result = []
     for c in child_patterns:
@@ -263,18 +248,10 @@ def union_deny(parent_deny: dict, child_deny: dict) -> dict:
 def restrict_budget(parent: dict, child: dict) -> dict:
     """Budget restriction — spec §5.2. Tighter bound wins per dimension."""
     return {
-        "compute_usd": min(
-            parent.get("compute_usd", 0.10), child.get("compute_usd", 0.10)
-        ),
-        "latency_ms": min(
-            parent.get("latency_ms", 60000), child.get("latency_ms", 60000)
-        ),
-        "quality_floor": max(
-            parent.get("quality_floor", 0.0), child.get("quality_floor", 0.0)
-        ),
-        "risk_ceiling": min(
-            parent.get("risk_ceiling", 1.0), child.get("risk_ceiling", 1.0)
-        ),
+        "compute_usd": min(parent.get("compute_usd", 0.10), child.get("compute_usd", 0.10)),
+        "latency_ms": min(parent.get("latency_ms", 60000), child.get("latency_ms", 60000)),
+        "quality_floor": max(parent.get("quality_floor", 0.0), child.get("quality_floor", 0.0)),
+        "risk_ceiling": min(parent.get("risk_ceiling", 1.0), child.get("risk_ceiling", 1.0)),
     }
 
 
@@ -415,9 +392,7 @@ def resolve_namespace(
     return effective
 
 
-def _compose(
-    effective: dict, level_ns: dict, get_policy: Callable[[str], dict | None]
-) -> dict:
+def _compose(effective: dict, level_ns: dict, get_policy: Callable[[str], dict | None]) -> dict:
     """Apply one level's config onto the running effective state — spec §4.3."""
     policy = get_policy(level_ns["id"])
 
@@ -456,9 +431,7 @@ def _compose(
         if "budget" in policy:
             effective["budget"] = restrict_budget(effective["budget"], policy["budget"])
         if "dial_ceiling" in policy:
-            effective["dial_ceiling"] = min(
-                effective["dial_ceiling"], policy["dial_ceiling"]
-            )
+            effective["dial_ceiling"] = min(effective["dial_ceiling"], policy["dial_ceiling"])
         if "hash_access" in policy:
             effective["hash_access"] = sorted(
                 set(effective["hash_access"]) & set(policy["hash_access"])
@@ -472,9 +445,7 @@ def _compose(
 
     # Bindings: overlay (child wins on key conflict)
     if ns_bindings:
-        effective["bindings"] = overlay_bindings(
-            effective.get("bindings", {}), ns_bindings
-        )
+        effective["bindings"] = overlay_bindings(effective.get("bindings", {}), ns_bindings)
 
     # Variables: child overrides parent on key conflict
     effective = merge_variables(effective, ns_variables)

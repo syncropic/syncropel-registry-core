@@ -105,9 +105,24 @@ class TestHashEffectSequence:
 
     def test_multi_effect_sequence(self):
         effects = [
-            {"primitive": "GET", "operation": "query", "input_shape": "VOID", "output_shape": "MANY"},
-            {"primitive": "MAP", "operation": "filter", "input_shape": "MANY", "output_shape": "MANY"},
-            {"primitive": "PUT", "operation": "store", "input_shape": "ONE", "output_shape": "VOID"},
+            {
+                "primitive": "GET",
+                "operation": "query",
+                "input_shape": "VOID",
+                "output_shape": "MANY",
+            },
+            {
+                "primitive": "MAP",
+                "operation": "filter",
+                "input_shape": "MANY",
+                "output_shape": "MANY",
+            },
+            {
+                "primitive": "PUT",
+                "operation": "store",
+                "input_shape": "ONE",
+                "output_shape": "VOID",
+            },
         ]
         h = hash_effect_sequence(effects, level=2)
         h0 = hash_effect(effects[0], 2)
@@ -130,7 +145,12 @@ class TestComputeHashes:
     def test_returns_four_hashes(self):
         effects = [
             {"primitive": "GET", "operation": "get", "input_shape": "ONE", "output_shape": "ONE"},
-            {"primitive": "PUT", "operation": "store", "input_shape": "ONE", "output_shape": "VOID"},
+            {
+                "primitive": "PUT",
+                "operation": "store",
+                "input_shape": "ONE",
+                "output_shape": "VOID",
+            },
         ]
         l0, l1, l2, l3 = compute_hashes(effects)
         assert len(l0) == 64
@@ -144,7 +164,12 @@ class TestComputeHashes:
     def test_hash_containment_property(self):
         """L0 match should imply L1, L2, L3 match (same effects)."""
         effects = [
-            {"primitive": "GET", "operation": "query", "input_shape": "VOID", "output_shape": "MANY"},
+            {
+                "primitive": "GET",
+                "operation": "query",
+                "input_shape": "VOID",
+                "output_shape": "MANY",
+            },
         ]
         l0_a, l1_a, l2_a, l3_a = compute_hashes(effects)
         l0_b, l1_b, l2_b, l3_b = compute_hashes(effects)
@@ -173,7 +198,12 @@ class TestCanonicalKeyOrder:
 
     def test_l1_keys_in_op_out_p(self):
         """L1: in, op, out, p (alphabetical)."""
-        effect = {"primitive": "GET", "operation": "query", "input_shape": "ONE", "output_shape": "MANY"}
+        effect = {
+            "primitive": "GET",
+            "operation": "query",
+            "input_shape": "ONE",
+            "output_shape": "MANY",
+        }
         h = hash_effect(effect, 1)
         expected = _sha256('{"in":"ONE","op":"query","out":"MANY","p":"GET"}')
         assert h == expected
@@ -188,5 +218,7 @@ class TestCanonicalKeyOrder:
             "parameters": {"z": 1, "a": 2},
         }
         h = hash_effect(effect, 0)
-        expected = _sha256('{"in":"ONE","op":"query","out":"MANY","p":"GET","params":{"a":2,"z":1}}')
+        expected = _sha256(
+            '{"in":"ONE","op":"query","out":"MANY","p":"GET","params":{"a":2,"z":1}}'
+        )
         assert h == expected

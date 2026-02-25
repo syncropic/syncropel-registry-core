@@ -11,28 +11,32 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
+
+from syncropel_registry_core.constants import _any_glob_match
 
 
-class PrincipalType(str, Enum):
+class PrincipalType(StrEnum):
     """Type of principal requesting a session."""
+
     USER = "USER"
     SERVICE = "SERVICE"
     RUNNER = "RUNNER"
     ANONYMOUS = "ANONYMOUS"
 
 
-class GovernanceTier(str, Enum):
+class GovernanceTier(StrEnum):
     """Governance tier determines enforcement level."""
+
     STANDARD = "STANDARD"
     ELEVATED = "ELEVATED"
 
 
-class HashLevel(str, Enum):
+class HashLevel(StrEnum):
     """Four-level content-addressed hashing for privacy-preserving transfer."""
+
     L0 = "L0"  # Exact (all params) — never leaves local
     L1 = "L1"  # Structural (ops + shapes, no params)
     L2 = "L2"  # Flow (primitives + shapes)
@@ -42,10 +46,11 @@ class HashLevel(str, Enum):
 @dataclass
 class QuadMetrics:
     """Four-dimensional cost model."""
-    compute: Decimal = Decimal("0")    # USD
-    latency: Decimal = Decimal("0")    # milliseconds
-    quality: Decimal = Decimal("0")    # quality score [0, 1]
-    risk: Decimal = Decimal("0")       # risk score [0, 1]
+
+    compute: Decimal = Decimal("0")  # USD
+    latency: Decimal = Decimal("0")  # milliseconds
+    quality: Decimal = Decimal("0")  # quality score [0, 1]
+    risk: Decimal = Decimal("0")  # risk score [0, 1]
 
     def to_dict(self) -> dict:
         return {
@@ -73,19 +78,15 @@ class CapabilityEnvelope:
 
     Capabilities compose via set intersection — narrowing only, never widening.
     """
-    primitives: set[str] = field(
-        default_factory=lambda: {"GET", "PUT", "CALL", "MAP"}
-    )
-    shapes: set[str] = field(
-        default_factory=lambda: {"VOID", "ONE", "OPTIONAL", "MANY", "KEYED"}
-    )
+
+    primitives: set[str] = field(default_factory=lambda: {"GET", "PUT", "CALL", "MAP"})
+    shapes: set[str] = field(default_factory=lambda: {"VOID", "ONE", "OPTIONAL", "MANY", "KEYED"})
     operations: list[str] = field(default_factory=list)  # glob patterns
-    resources: list[str] = field(default_factory=list)    # VFS glob patterns
+    resources: list[str] = field(default_factory=list)  # VFS glob patterns
     max_effects: int = 1000
     max_depth: int = 20
 
-    def contains(self, primitive: str, shape: str, operation: str = "",
-                 resource: str = "") -> bool:
+    def contains(self, primitive: str, shape: str, operation: str = "", resource: str = "") -> bool:
         """Check if this envelope allows the given effect parameters."""
         if primitive not in self.primitives:
             return False
@@ -137,6 +138,7 @@ class CapabilityEnvelope:
 @dataclass
 class DenyConstraint:
     """A structural deny rule baked into the SCT."""
+
     principal_pattern: str = "*"
     resources: list[str] = field(default_factory=list)
     primitives_on_resources: list[tuple[str, list[str]]] = field(default_factory=list)
@@ -147,12 +149,10 @@ class DenyConstraint:
             "principal_pattern": self.principal_pattern,
             "resources": self.resources,
             "primitives_on_resources": [
-                {"primitive": p, "resources": r}
-                for p, r in self.primitives_on_resources
+                {"primitive": p, "resources": r} for p, r in self.primitives_on_resources
             ],
             "shapes_on_resources": [
-                {"shape": s, "resources": r}
-                for s, r in self.shapes_on_resources
+                {"shape": s, "resources": r} for s, r in self.shapes_on_resources
             ],
         }
 
@@ -164,10 +164,7 @@ class DenyConstraint:
             (item["primitive"], item["resources"])
             for item in data.get("primitives_on_resources", [])
         ]
-        sor = [
-            (item["shape"], item["resources"])
-            for item in data.get("shapes_on_resources", [])
-        ]
+        sor = [(item["shape"], item["resources"]) for item in data.get("shapes_on_resources", [])]
         return cls(
             principal_pattern=data.get("principal_pattern", "*"),
             resources=data.get("resources", []),
@@ -179,10 +176,10 @@ class DenyConstraint:
 @dataclass
 class DenyEnvelope:
     """Collection of deny constraints applied after capability intersection."""
+
     constraints: list[DenyConstraint] = field(default_factory=list)
 
-    def matches(self, principal_did: str, primitive: str, shape: str,
-                resource: str) -> bool:
+    def matches(self, principal_did: str, primitive: str, shape: str, resource: str) -> bool:
         """Check if any deny constraint matches the given effect parameters."""
         from fnmatch import fnmatch
 
@@ -209,21 +206,17 @@ class DenyEnvelope:
     def from_dict(cls, data: dict) -> DenyEnvelope:
         if not data:
             return cls()
-        return cls(
-            constraints=[
-                DenyConstraint.from_dict(c)
-                for c in data.get("constraints", [])
-            ]
-        )
+        return cls(constraints=[DenyConstraint.from_dict(c) for c in data.get("constraints", [])])
 
 
 @dataclass
 class BudgetEnvelope:
     """Four-dimensional budget for a session using QuadMetrics."""
-    compute: Decimal = Decimal("0")     # USD ceiling (0 = unlimited)
-    latency: Decimal = Decimal("0")     # milliseconds ceiling (0 = unlimited)
-    quality: Decimal = Decimal("0")     # quality floor [0, 1]
-    risk: Decimal = Decimal("1")        # risk ceiling [0, 1]
+
+    compute: Decimal = Decimal("0")  # USD ceiling (0 = unlimited)
+    latency: Decimal = Decimal("0")  # milliseconds ceiling (0 = unlimited)
+    quality: Decimal = Decimal("0")  # quality floor [0, 1]
+    risk: Decimal = Decimal("1")  # risk ceiling [0, 1]
     spent_compute: Decimal = Decimal("0")
     spent_latency: Decimal = Decimal("0")
 
@@ -251,10 +244,12 @@ class BudgetEnvelope:
     def restrict(self, other: BudgetEnvelope) -> BudgetEnvelope:
         """Return a tighter budget envelope (intersection)."""
         return BudgetEnvelope(
-            compute=min(self.compute, other.compute) if self.compute > 0 and other.compute > 0
-                    else max(self.compute, other.compute),
-            latency=min(self.latency, other.latency) if self.latency > 0 and other.latency > 0
-                    else max(self.latency, other.latency),
+            compute=min(self.compute, other.compute)
+            if self.compute > 0 and other.compute > 0
+            else max(self.compute, other.compute),
+            latency=min(self.latency, other.latency)
+            if self.latency > 0 and other.latency > 0
+            else max(self.latency, other.latency),
             quality=max(self.quality, other.quality),
             risk=min(self.risk, other.risk),
         )
@@ -286,17 +281,15 @@ class BudgetEnvelope:
 @dataclass
 class OutputConstraints:
     """Constraints on output shapes for data exfiltration control."""
-    max_many_cardinality: Optional[int] = None
-    deny_shapes_on_resources: list[tuple[str, list[str]]] = field(
-        default_factory=list
-    )
+
+    max_many_cardinality: int | None = None
+    deny_shapes_on_resources: list[tuple[str, list[str]]] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
             "max_many_cardinality": self.max_many_cardinality,
             "deny_shapes_on_resources": [
-                {"shape": s, "resources": r}
-                for s, r in self.deny_shapes_on_resources
+                {"shape": s, "resources": r} for s, r in self.deny_shapes_on_resources
             ],
         }
 
@@ -305,8 +298,7 @@ class OutputConstraints:
         if not data:
             return cls()
         dsor = [
-            (item["shape"], item["resources"])
-            for item in data.get("deny_shapes_on_resources", [])
+            (item["shape"], item["resources"]) for item in data.get("deny_shapes_on_resources", [])
         ]
         return cls(
             max_many_cardinality=data.get("max_many_cardinality"),
@@ -317,11 +309,12 @@ class OutputConstraints:
 @dataclass
 class CrossNamespaceGrant:
     """Permission to access resources in another namespace."""
+
     target_namespace: str = ""
     capability: CapabilityEnvelope = field(default_factory=CapabilityEnvelope)
     hash_levels: set[str] = field(default_factory=set)
-    expires_at: Optional[str] = None
-    budget: Optional[BudgetEnvelope] = None
+    expires_at: str | None = None
+    budget: BudgetEnvelope | None = None
     issuer_signature: str = ""
 
     def to_dict(self) -> dict:
@@ -355,6 +348,7 @@ class SessionCapabilityToken:
 
     Content-addressed via content_hash(). Once issued, immutable.
     """
+
     # Identity
     principal_did: str = ""
     principal_type: PrincipalType = PrincipalType.ANONYMOUS
@@ -375,20 +369,16 @@ class SessionCapabilityToken:
     trust_freshness: Decimal = Decimal("1")
 
     # Visibility
-    hash_access: set[str] = field(
-        default_factory=lambda: {"L0", "L1", "L2", "L3"}
-    )
+    hash_access: set[str] = field(default_factory=lambda: {"L0", "L1", "L2", "L3"})
 
     # Scope
     namespace: str = ""
-    cross_namespace_grants: list[CrossNamespaceGrant] = field(
-        default_factory=list
-    )
+    cross_namespace_grants: list[CrossNamespaceGrant] = field(default_factory=list)
 
     # Structural limits
     max_effects: int = 1000
     max_depth: int = 20
-    output_constraints: Optional[OutputConstraints] = None
+    output_constraints: OutputConstraints | None = None
 
     # Validity
     issued_at: str = ""
@@ -400,15 +390,15 @@ class SessionCapabilityToken:
 
     # Revocation tracking
     revoked: bool = False
-    revoked_at: Optional[str] = None
+    revoked_at: str | None = None
 
     # Delegation
-    parent_sct_hash: Optional[str] = None
+    parent_sct_hash: str | None = None
     delegation_chain: list[str] = field(default_factory=list)
 
     # Cryptographic signing (excluded from content hash)
-    issuer_signature: str = ""   # Base64-encoded Ed25519 signature
-    principal_key: str = ""      # Hex-encoded Ed25519 public key (optional)
+    issuer_signature: str = ""  # Base64-encoded Ed25519 signature
+    principal_key: str = ""  # Hex-encoded Ed25519 public key (optional)
 
     def content_hash(self) -> str:
         """Compute deterministic content hash of this SCT."""
@@ -421,7 +411,7 @@ class SessionCapabilityToken:
             return False
         if not self.expires_at:
             return False
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         return now < self.expires_at
 
     def is_revoked(self) -> bool:
@@ -459,15 +449,18 @@ class SessionCapabilityToken:
         """Check if the SCT has expired (alias for time component of is_valid)."""
         if not self.expires_at:
             return True
-        from datetime import datetime, timezone
-        now = datetime.now(timezone.utc).isoformat()
+        from datetime import datetime
+
+        now = datetime.now(UTC).isoformat()
         return now >= self.expires_at
 
     def to_dict(self) -> dict:
         d = self._canonical_dict()
         d["trust_freshness"] = str(self.trust_freshness)
         d["cross_namespace_grants"] = [g.to_dict() for g in self.cross_namespace_grants]
-        d["output_constraints"] = self.output_constraints.to_dict() if self.output_constraints else None
+        d["output_constraints"] = (
+            self.output_constraints.to_dict() if self.output_constraints else None
+        )
         d["revoked"] = self.revoked
         d["revoked_at"] = self.revoked_at
         d["content_hash"] = self.content_hash()
@@ -480,10 +473,7 @@ class SessionCapabilityToken:
         if not data:
             return cls()
         oc = data.get("output_constraints")
-        grants = [
-            CrossNamespaceGrant.from_dict(g)
-            for g in data.get("cross_namespace_grants", [])
-        ]
+        grants = [CrossNamespaceGrant.from_dict(g) for g in data.get("cross_namespace_grants", [])]
         return cls(
             principal_did=data.get("principal_did", ""),
             principal_type=PrincipalType(data.get("principal_type", "ANONYMOUS")),
@@ -517,20 +507,30 @@ class SessionCapabilityToken:
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _any_glob_match(patterns: list[str], text: str) -> bool:
-    """Check if any pattern matches the text using fnmatch."""
-    from fnmatch import fnmatch
-    return any(fnmatch(text, p) for p in patterns)
-
 
 def _intersect_patterns(a: list[str], b: list[str]) -> list[str]:
-    """Intersect two pattern lists. If either is empty, use the other.
+    """Intersect two pattern lists using subsumption.
 
-    Monotonic narrowing: the result is always a subset of both inputs.
-    If the intersection is empty, the result is empty (no fallback).
+    Returns b's patterns that are subsumed by at least one pattern in a,
+    plus a's patterns subsumed by at least one in b (symmetric subsumption).
+    If either list is empty, use the other (identity element).
     """
     if not a:
         return list(b)
     if not b:
         return list(a)
-    return sorted(set(a) & set(b))
+    from syncropel_registry_core.namespaces import pattern_subsumes
+
+    result = []
+    for pat_b in b:
+        for pat_a in a:
+            if pattern_subsumes(pat_a, pat_b):
+                result.append(pat_b)
+                break
+    for pat_a in a:
+        if pat_a not in result:
+            for pat_b in b:
+                if pattern_subsumes(pat_b, pat_a):
+                    result.append(pat_a)
+                    break
+    return sorted(set(result))

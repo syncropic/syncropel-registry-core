@@ -7,7 +7,6 @@ from syncropel_registry_core.sct.helpers import (
     resolve_namespace_hierarchy,
 )
 
-
 # ---------------------------------------------------------------------------
 # resolve_namespace_hierarchy
 # ---------------------------------------------------------------------------

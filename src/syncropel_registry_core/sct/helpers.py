@@ -48,7 +48,8 @@ def intersect_capabilities(policies: list) -> CapabilityEnvelope:
 
 
 def collect_deny_constraints(
-    policies: list, principal_did: str,
+    policies: list,
+    principal_did: str,
 ) -> list[DenyConstraint]:
     """Gather deny constraints from all namespace levels.
 
@@ -78,9 +79,13 @@ def apply_principal_overrides(
         for override in policy.principals:
             if fnmatch(principal_did, override.match):
                 override_envelope = CapabilityEnvelope(
-                    primitives=set(override.primitives) if override.primitives else capability.primitives,
+                    primitives=set(override.primitives)
+                    if override.primitives
+                    else capability.primitives,
                     shapes=capability.shapes,
-                    operations=override.operations if override.operations else capability.operations,
+                    operations=override.operations
+                    if override.operations
+                    else capability.operations,
                     resources=override.resources if override.resources else capability.resources,
                     max_effects=capability.max_effects,
                     max_depth=capability.max_depth,
@@ -117,7 +122,7 @@ def compute_dial_ceiling(
     if budget_ratio < Decimal("0.1"):
         ceilings.append(Decimal("0.3333"))  # REPLAY only
     elif budget_ratio < Decimal("0.25"):
-        ceilings.append(Decimal("0.5"))     # up to ADAPT
+        ceilings.append(Decimal("0.5"))  # up to ADAPT
     elif budget_ratio < Decimal("0.5"):
         ceilings.append(Decimal("0.6667"))  # up to EXPLORE
 
@@ -125,7 +130,8 @@ def compute_dial_ceiling(
 
 
 def build_budget_envelope(
-    policies: list, sa_config=None,
+    policies: list,
+    sa_config=None,
 ) -> BudgetEnvelope:
     """Compose budget from namespace hierarchy (tighter bound wins).
 
@@ -156,7 +162,8 @@ def build_budget_envelope(
 
 
 def dial_zone_to_hash_access(
-    dial_ceiling: Decimal, policies: list,
+    dial_ceiling: Decimal,
+    policies: list,
 ) -> set[str]:
     """Map dial zone to accessible hash levels, intersected with namespace consent.
 
