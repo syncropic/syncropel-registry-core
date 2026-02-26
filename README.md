@@ -1,12 +1,12 @@
 # syncropel-registry-core
 
-Shared governance logic for [Syncropel](https://syncropic.com) — infrastructure that learns and governs.
+Shared governance logic for [Syncropel](https://docs.syncropel.com) — infrastructure that learns and governs.
 
-Pure Python. Zero external dependencies. 218 tests.
+Pure Python. Zero external dependencies. Same logic in every deployment.
 
 ## Why This Exists
 
-Syncropel has two runtimes that make governance decisions: the [production registry](https://github.com/syncropic/syncropel-registry) (FastAPI + PostgreSQL) and the [local CLI](https://github.com/syncropic/syncropel-cli) (`spl serve` + DuckDB). Both must enforce identical rules. This library is the shared brain — pure functions with no I/O, no database access, no async. You pass callbacks for storage; it handles the math.
+Syncropel has two runtimes that make governance decisions: the [production registry](https://github.com/syncropic/syncropel-registry) and the [local CLI](https://github.com/syncropic/syncropel-cli) (`spl serve`). Both must enforce identical rules. This library is the shared brain — pure functions with no I/O, no database access, no async. You pass callbacks for storage; it handles the math.
 
 ## Install
 
@@ -19,9 +19,7 @@ pip install "syncropel-registry-core @ git+https://github.com/syncropic/syncrope
 
 # For development
 git clone https://github.com/syncropic/syncropel-registry-core.git
-cd syncropel-registry-core
-uv sync --extra dev
-uv run pytest tests/ -v   # 218 tests, ~0.3s
+cd syncropel-registry-core && uv sync --extra dev
 ```
 
 Requires Python 3.12+. Zero runtime dependencies.
@@ -30,19 +28,19 @@ Requires Python 3.12+. Zero runtime dependencies.
 
 | Module | What It Does |
 |--------|-------------|
-| `hashing` | 4-level content-addressed hashing (L0 exact → L3 intent) |
-| `namespaces` | 5-level namespace resolution with monotonic narrowing |
+| `hashing` | Content-addressed hashing across hash levels — L0 exact through L3 intent |
+| `namespaces` | Namespace resolution with monotonic narrowing. Children never have more permissions than parents |
 | `trust` | Wilson score lower bound with cold-start prior and temporal decay |
-| `validators.governance` | Pure governance checks 3-9 (capability, deny, budget, dial, hash level, output constraints, lineage, federation) |
+| `validators.governance` | Pure governance checks — capability, deny, budget, dial, hash level, output constraints, lineage, federation |
 | `models.sct` | SessionCapabilityToken — the primary governance primitive |
 | `models.governance` | Audit records, governance decisions, lineage, observations |
 | `sct.helpers` | SCT computation helpers (hierarchy walk, capability intersection, dial ceiling) |
 | `crystallization` | Pattern promotion based on observation statistics |
-| `constants` | Frozen Foundation constants (F1-F15) |
+| `constants` | Frozen Foundation constants |
 
 ## Usage
 
-### Hash effects at all 4 levels
+### Hash effects across all levels
 
 ```python
 from syncropel_registry_core.hashing import compute_hashes
@@ -76,8 +74,8 @@ def get_ns(ns_id: str) -> dict | None:
 def get_policy(ns_id: str) -> dict | None:
     return your_db.get_policy(ns_id)
 
-# Walks DEFAULT → acme → acme/analytics → acme/analytics/prod
-# Composes capability (intersection), deny (union), budget (tighter wins)
+# Walks the hierarchy, composing governance at each level
+# Capability intersects, deny merges, budget takes the tighter constraint
 effective = resolve_namespace("acme/analytics/prod", get_ns, get_policy)
 
 print(effective["capability"]["primitives"])  # e.g. ["GET", "CALL"]
@@ -102,7 +100,7 @@ print(trust.effective_score)      # e.g. 0.8234
 print(trust.trust_dial_ceiling)   # e.g. 1.0 (full CREATE access)
 ```
 
-### Validate governance checks 3-9
+### Validate governance checks
 
 ```python
 from decimal import Decimal
@@ -141,7 +139,7 @@ else:
 
 ## Governance Check Split
 
-The full Syncropel governance pipeline has 10 checks. This library implements the pure (stateless) ones:
+The full governance pipeline splits between stateful checks (requiring storage) and pure checks (this library):
 
 | Check | Name | Location | Why |
 |-------|------|----------|-----|
@@ -156,27 +154,23 @@ The full Syncropel governance pipeline has 10 checks. This library implements th
 | **9** | **Structural constraints** | **This library** | Pure validation |
 | 10 | HITL approval | Registry | Requires approval lookup |
 
-## Key Concepts
-
-**Effects** are the atomic unit of computation — a primitive (GET/PUT/CALL/MAP) with input and output shapes.
-
-**Hash levels** provide privacy-preserving transfer: L0 (exact, stays local) → L1 (structural) → L2 (flow) → L3 (intent, safest to share).
-
-**Namespaces** form a 5-level hierarchy (DEFAULT → ORG → PROJECT → ENV → JOB) where governance monotonically narrows: child can never have more permissions than parent.
-
-**SCT (Session Capability Token)** carries all governance constraints for a session — computed once at creation, used for every check without database lookups.
-
-**Trust** uses Wilson score lower bound with a 7/10 cold-start prior and 30-day half-life decay.
-
 ## Development
 
 ```bash
 uv sync --extra dev
-uv run pytest tests/ -v          # 218 tests, ~0.3s
-uv run ruff check src/ tests/    # zero violations
+uv run pytest tests/ -v
+uv run ruff check src/ tests/
 uv run ruff format --check src/ tests/
 ```
 
+## Related
+
+- [Syncropel Studio](https://app.syncropel.com) — operate registries from the browser
+- [Documentation](https://docs.syncropel.com) — concepts, guides, reference
+- [spl](https://github.com/syncropic/syncropel-cli) — CLI + local registry
+- [syncropel-registry](https://github.com/syncropic/syncropel-registry) — production registry
+- [syncropel-core](https://github.com/syncropic/syncropel-core) — Rust verification engine
+
 ## License
 
-Apache-2.0
+Apache-2.0. See [LICENSE](./LICENSE).
